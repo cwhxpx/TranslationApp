@@ -2,6 +2,24 @@ from openai import OpenAI
 import docx
 import tkinter as tk
 from tkinter import filedialog
+import config
+
+openai_client = OpenAI(
+    api_key=config.OPENAI_API_KEY
+)
+
+def browse_file():
+    file_location = filedialog.askopenfilename(
+        initialdir="/",
+        title="Select file",
+        filetypes=(("Word files", "*.docx"), ("all files", "*.*"))
+    )
+    if file_location:
+        # 获取下拉菜单中选定的语言
+        target_language = language_var.get()
+        translated_text = translate_text(file_location, target_language)
+        text_field.delete("1.0", tk.END)
+        text_field.insert(tk.END, translated_text)
 
 root = tk.Tk()
 root.title("Text Translator")
@@ -14,12 +32,13 @@ header.grid(row=0, column=0, columnspan=2, pady=20)
 browse_button = tk.Button(root, text="Browse",
                           bg="#4267B2", fg="black", relief="flat",
                           borderwidth=0, activebackground="#4267B2",
-                          activeforeground="white")
+                          activeforeground="white",
+                          command=browse_file)
 browse_button.config(font=("Arial", 12, "bold"), width=10, height=2)
 browse_button.grid(row=1, column=0, padx=20, pady=20)
 
 # 创建语言选择下拉菜单
-languages = ["Bulgarian", "Hindi", "Spanish", "French"]
+languages = ["English","Japnese","Bulgarian", "Hindi", "Spanish", "French"]
 language_var = tk.StringVar(root)
 language_var.set(languages[0])  # 设置默认值
 language_menu = tk.OptionMenu(root, language_var, *languages)
@@ -37,6 +56,23 @@ text_field.grid_columnconfigure(0, weight=1)
 root.grid_rowconfigure(2, weight=1)
 root.grid_columnconfigure(0, weight=1)
 root.grid_columnconfigure(1, weight=1)
+
+def translate_text(file_location, target_language):
+    doc = docx.Document(file_location)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text
+    model_engine = "gpt-4o"
+    response = openai_client.chat.completions.create(
+        model=model_engine,
+        messages=[
+            {"role": "user", "content": "You are a professional language translator. Below I will ask you to translate text. I expect from you to give me the correct translation. Can you help me with that?"},
+            {"role": "assistant", "content": "Yes I can help you with that."},
+            {"role": "user", "content": f"Translate the following text in {target_language} : {text}"}
+        ]
+    )
+    translated_text = response.choices[0].message.content
+    return translated_text
 
 
 root.mainloop()
